@@ -12,7 +12,7 @@ a_tags = soup.find_all('a')
 i = 0
 for a in a_tags:
     if a['href'].endswith(".pdf"):
-        response = requests.get("https://www.ladispe.polito.it/corsi/ContrAutoInf270/" + a.get('href'))
+        response = requests.get(TARGET_URL + a.get('href'))
         pdf = open("pdf"+str(i)+".pdf", 'wb')
         pdf.write(response.content)
         pdf.close()
