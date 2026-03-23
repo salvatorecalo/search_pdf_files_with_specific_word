@@ -6,21 +6,31 @@ from PyPDF2 import PdfReader
 import os
 import pikepdf
 
+import requests
+from bs4 import BeautifulSoup
+import time
+import re
+
 def download_file_from_website():
     TARGET_URL = "https://www.ladispe.polito.it/corsi/ContrAutoInf270/"
     html = requests.get(TARGET_URL)
     soup = BeautifulSoup(html.text, features="lxml")
     a_tags = soup.find_all('a')
-    i = 0
     for a in a_tags:
-        if a['href'].endswith(".pdf"):
-            response = requests.get(TARGET_URL + a.get('href'))
-            pdf = open("pdf"+str(i)+".pdf", 'wb')
-            pdf.write(response.content)
-            pdf.close()
-            i += 1
+        href = a.get('href')
+        if href and href.endswith(".pdf"):
+            text_content = a.get_text(strip=True)
+            clean_name = re.sub(r'[\\/*?:"<>|\n\r\t]', '', text_content)
+            clean_name = clean_name.strip()
+            if not clean_name:
+                clean_name = href.split('/')[-1].replace('.pdf', '')
+            file_url = TARGET_URL + href
+            response = requests.get(file_url)
+            with open(f"{clean_name}.pdf", 'wb') as pdf:
+                pdf.write(response.content)    
+            print(f"Salvato: {clean_name}.pdf")
             time.sleep(1)
-
+            
 def search_word_in_files(all_files: list):
     word_to_search = input("Che parola vuoi cercare nei pdf? ")
     for file in all_files:
@@ -36,12 +46,10 @@ def search_word_in_files(all_files: list):
 def decrypt(pdf_files: list):
     i = 0
     for file in pdf_files:
-        print(os.path.dirname(file))
         try:
-            file_name = f"file_unlocked_{i}.pdf"
             with pikepdf.open(file, allow_overwriting_input=True) as pdf:
-                pdf.save(file_name)
-            print(f"Ho salvato {file} aggirando i permessi di Taragna {file_name}")
+                pdf.save(file)
+            print(f"Ho salvato {file} aggirando i permessi di Taragna")
             i+=1
             os.remove(file)
         except Exception as e:
@@ -51,7 +59,7 @@ def decrypt(pdf_files: list):
 
     
 def main():
-    download_file=input("Vuoi scaricare i dati dal sito?")
+    download_file=input("Vuoi scaricare i dati dal sito? (yes/no): ")
     if download_file=="yes":
        download_file_from_website()
     all_files = os.listdir()
@@ -59,7 +67,7 @@ def main():
     for file in all_files:
         if not os.path.isfile(file) or not file.endswith(".pdf"):
             list_copy.remove(file)
-    choise = int(input("What do you want to do?\n1.Search word in file\n2. Decrypt pdf\n3. delete all pdf"))
+    choise = int(input("What do you want to do?\n1.Search word in file\n2. Decrypt pdf\n3. delete all pdf\nEnter the option:"))
     match (choise):
         case 1:
             search_word_in_files(list_copy)
